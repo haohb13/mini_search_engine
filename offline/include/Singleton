@@ -1,0 +1,75 @@
+ ///
+ /// @file    Singleton.hpp
+ /// @author  lemon(haohb13@gmail.com)
+ /// @date    2015-11-10 17:45:02
+ ///
+
+
+#ifndef _WD_SINGLETON_H_
+#define _WD_SINGLETON_H_
+
+#include <stdlib.h>
+#include <pthread.h>
+
+#include <string>
+
+namespace wd
+{
+
+template<typename T>
+class Singleton
+{
+public:
+	static T * getInstance();
+	//static T * getInstance(const std::string & filename);
+
+	void init();
+	void destroy();
+private:
+	Singleton(){}
+	~Singleton(){}
+
+private:
+	static Singleton * pInstance_;
+	static pthread_once_t once_;
+};
+
+template <typename T>
+T* Singleton<T>::getInstance()
+{
+	pthread_once(&once_, init);
+	return pInstance_;
+}
+
+
+//template <typename T>
+//T * Singleton<T>::getInstance(const std::string & 
+
+template <typename T>
+void Singleton<T>::init()
+{
+	::atexit(destroy);
+	if(NULL == pInstance_)
+	{
+		pInstance_ = new T;
+	}
+}
+
+template <typename T>
+void Singleton<T>::destroy()
+{
+	if(pInstance_)
+	{
+		delete pInstance_;
+	}
+}
+
+template <typename T>
+T * Singleton<T>::pInstance_ = NULL;
+
+template <typename T>
+pthread_once_t Singleton<T>::once_ = PTHREAD_ONCE_INIT;
+
+
+}// end of namespace wd
+#endif
