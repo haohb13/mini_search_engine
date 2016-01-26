@@ -7,6 +7,7 @@
 
 #include "FileProcessor.hpp"
 #include "Configuration.hpp"
+#include "GlobalDefine.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -18,7 +19,7 @@ FileProcessor::FileProcessor(Configuration & conf)
 	  : conf_(conf)
 {
 	std::map<std::string, std::string> & confMap = conf_.getConfigMap();
-	std::string titleFeatureFilePath = confMap["titlefeature"];
+	std::string titleFeatureFilePath = confMap[TITLEFEATURE_KEY];
 	std::ifstream ifs(titleFeatureFilePath.c_str());
 	if(ifs)
 	{

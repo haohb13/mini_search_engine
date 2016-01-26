@@ -9,6 +9,7 @@
 #include "PageLib.hpp"
 #include "DirScanner.hpp"
 #include "FileProcessor.hpp"
+#include "GlobalDefine.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -38,8 +39,8 @@ void PageLib::store()
 {
 	//需要读取配置信息//???
 	std::map<std::string, std::string> & confMap = conf_.getConfigMap();
-	std::string pageLibPath = confMap["ripepagelib"];
-	std::string offsetLibPath = confMap["offsetlib"];
+	std::string pageLibPath = confMap[RIPEPAGELIB_KEY];
+	std::string offsetLibPath = confMap[OFFSETLIB_KEY];
 
 	std::ofstream ofsPage(pageLibPath.c_str());
 	std::ofstream ofsOffset(offsetLibPath.c_str());

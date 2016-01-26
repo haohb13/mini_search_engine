@@ -7,6 +7,7 @@
 
 #include "DirScanner.hpp"
 #include "Configuration.hpp"
+#include "GlobalDefine.hpp"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -30,7 +31,7 @@ DirScanner::DirScanner(Configuration & conf)
 void DirScanner::operator()()
 {
 	std::map<std::string, std::string> & confMap = conf_.getConfigMap();
-	std::string dirName = confMap["yuliao"];
+	std::string dirName = confMap[YULIAO_KEY];
 	traverse(dirName);
 }
 
