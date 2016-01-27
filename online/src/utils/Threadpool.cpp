@@ -6,6 +6,7 @@
 
 #include "Threadpool.h"
 #include "Thread.h"
+#include <stdio.h>
 
 namespace wd
 {
@@ -13,7 +14,9 @@ Threadpool::Threadpool(size_t threadsNum, size_t bufNum)
 	: threadsNum_(threadsNum),
 	  buf_(bufNum),
 	  isExit_(false)
-{}
+{
+	printf("Threadpool()\n");
+}
 
 Threadpool::~Threadpool()
 {
@@ -37,6 +40,7 @@ void Threadpool::start()
 	{
 		(*it)->start();
 	}
+	printf("Threadpool::start()\n");
 }
 
 
@@ -60,6 +64,7 @@ void Threadpool::stop()
 
 void Threadpool::addTask(Task task)
 {
+	printf("Threadpool::addTask()\n");
 	buf_.push(task);
 }
 

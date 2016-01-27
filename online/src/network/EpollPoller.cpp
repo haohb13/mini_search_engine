@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <sys/eventfd.h>
 
 
 namespace wd
@@ -24,6 +25,17 @@ int createEpollFd()
 		perror("epoll_create1 error");
 		exit(EXIT_FAILURE);
 	}
+	return efd;
+}
+
+int createEventFd()
+{
+	int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if(-1 == evtfd)
+	{
+		perror("eventfd create error");
+	}
+	return evtfd;
 }
 
 void addEpollFdRead(int efd, int fd)
@@ -92,12 +104,14 @@ bool isConnectionClosed(int sockfd)
 
 
 EpollPoller::EpollPoller(int listenfd)
-	: epollfd_(createEpollFd()),
-	  listenfd_(listenfd),
-	  isLooping_(false),
-	  eventsList_(1024)
+: epollfd_(createEpollFd())
+, listenfd_(listenfd)
+, wakeupfd_(createEventFd())
+, isLooping_(false)
+, eventsList_(1024)
 {
-	addEpollFdRead(epollfd_, listenfd);
+	addEpollFdRead(epollfd_, listenfd_);
+	addEpollFdRead(epollfd_, wakeupfd_);
 }
 
 
@@ -119,6 +133,52 @@ void EpollPoller::unloop()
 {
 	if(isLooping_)
 		isLooping_ = false;
+}
+
+
+void EpollPoller::runInLoop(const Functor & cb)
+{
+	{
+	MutexLockGuard mlg(mutex_);
+	pendingFunctors_.push_back(cb);
+	}
+	wakeup();
+}
+
+void EpollPoller::doPendingFunctors()
+{
+	printf("doPendingFunctors()\n");
+	std::vector<Functor> functors;
+	{
+	MutexLockGuard mlg(mutex_);
+	functors.swap(pendingFunctors_);
+	}
+	
+	for(size_t i = 0; i < functors.size(); ++i)
+	{
+		functors[i]();
+	}
+}
+
+
+void EpollPoller::wakeup()
+{
+	uint64_t one = 1;
+	ssize_t n = ::write(wakeupfd_, &one, sizeof(one));
+	if(n != sizeof(one))
+	{
+		perror("EpollPoller::wakeup() n != 8");
+	}
+}
+
+void EpollPoller::handleRead()
+{
+	uint64_t one = 1;
+	ssize_t n = ::read(wakeupfd_, &one, sizeof(one));
+	if(n != sizeof(one))
+	{
+		perror("EpollPoller::handleRead() n != 8");
+	}
 }
 
 
@@ -175,6 +235,15 @@ void EpollPoller::waitEpollfd()
 					handleConnection();
 				}
 			}
+			else if(eventsList_[idx].data.fd == wakeupfd_)
+			{
+				printf("wakeupfd light\n");
+				if(eventsList_[idx].events & EPOLLIN)
+				{
+					handleRead();
+					doPendingFunctors();
+				}
+			}
 			else
 			{
 				if(eventsList_[idx].events & EPOLLIN)
@@ -191,7 +260,7 @@ void EpollPoller::handleConnection()
 	int peerfd = acceptConnFd(listenfd_);
 	addEpollFdRead(epollfd_, peerfd);
 
-	TcpConnectionPtr conn(new TcpConnection(peerfd));
+	TcpConnectionPtr conn(new TcpConnection(peerfd, this));
 	//...给客户端发一个欢迎信息==> 挖一个空: 等...
 	//conn->send("welcome to server.\n");
 	conn->setConnectionCallback(onConnectionCb_);

@@ -5,6 +5,7 @@
  ///
 
 #include "TcpConnection.h"
+#include "EpollPoller.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -12,12 +13,13 @@
 namespace wd
 {
 
-TcpConnection::TcpConnection(int sockfd)
-	: sockfd_(sockfd),
-	  sockIO_(sockfd),
-	  localAddr_(wd::Socket::getLocalAddr(sockfd)),
-	  peerAddr_(wd::Socket::getPeerAddr(sockfd)),
-	  isShutdownWrite_(false)
+TcpConnection::TcpConnection(int sockfd, EpollPoller * loop)
+: sockfd_(sockfd)
+, sockIO_(sockfd)
+, localAddr_(wd::Socket::getLocalAddr(sockfd))
+, peerAddr_(wd::Socket::getPeerAddr(sockfd))
+, isShutdownWrite_(false)
+, loop_(loop)
 {}
 
 
@@ -27,8 +29,8 @@ TcpConnection::~TcpConnection()
 	{
 		isShutdownWrite_ = true;
 		shutdown();
-		printf("~TcpConnection()\n");
 	}
+	printf("~TcpConnection()\n");
 }
 
 std::string TcpConnection::receive()
@@ -49,10 +51,23 @@ void TcpConnection::send(const std::string & msg)
 	sockIO_.writen(msg.c_str(), msg.size());
 }
 
+//针对php服务器
+void TcpConnection::sendAndClose(const std::string & msg)
+{
+	send(msg);
+	shutdown();
+}
+
+void TcpConnection::sendInLoop(const std::string & msg)
+{
+	loop_->runInLoop(std::bind(&TcpConnection::sendAndClose, this, msg));
+}
 
 void TcpConnection::shutdown()
 {
-	sockfd_.shutdownWrite();
+	if(!isShutdownWrite_)
+		sockfd_.shutdownWrite();
+	isShutdownWrite_ = true;
 }
 
 std::string TcpConnection::toString()

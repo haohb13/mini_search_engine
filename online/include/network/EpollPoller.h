@@ -10,9 +10,11 @@
 
 #include "Noncopyable.h"
 #include "TcpConnection.h"
+#include "MutexLock.h"
 #include <sys/epoll.h>
 #include <vector>
 #include <map>
+#include <functional>
 
 namespace wd
 {
@@ -20,12 +22,18 @@ class EpollPoller : Noncopyable
 {
 public:
 	typedef TcpConnection::TcpConnectionCallback EpollCallback;
+	typedef std::function<void()> Functor;
 
 	EpollPoller(int listenfd);
 	~EpollPoller();
 
 	void loop();
 	void unloop();
+	void runInLoop(const Functor & cb);
+	void doPendingFunctors();
+
+	void wakeup();
+	void handleRead();
 
 	void setConnectionCallback(EpollCallback cb);
 	void setMessageCallback(EpollCallback cb);
@@ -39,7 +47,11 @@ private:
 private:
 	int epollfd_;
 	int listenfd_;
+	int wakeupfd_;
 	bool isLooping_;
+
+	MutexLock mutex_;
+	std::vector<Functor> pendingFunctors_;
 
 	typedef std::vector<struct epoll_event> EventList;
 	EventList eventsList_;

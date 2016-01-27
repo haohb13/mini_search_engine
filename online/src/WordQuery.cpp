@@ -319,6 +319,7 @@ string WordQuery::createJson(vector<int> & docIdVec, const vector<string> & quer
 	Json::Value root;
 	Json::Value arr;
 
+	int cnt = 0;
 	for(auto id : docIdVec)
 	{
 		string summary = _pageLib[id].summary(queryWords);
@@ -328,6 +329,8 @@ string WordQuery::createJson(vector<int> & docIdVec, const vector<string> & quer
 		elem["title"] = title;
 		elem["summary"] = summary;
 		arr.append(elem);
+		if(++cnt == 100)// 最多记录100条
+			break;
 	}
 
 	root["files"] = arr;

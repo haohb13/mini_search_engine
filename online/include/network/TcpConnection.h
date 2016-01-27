@@ -19,6 +19,8 @@
 namespace wd
 {
 
+class EpollPoller;
+
 class TcpConnection;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 
@@ -27,11 +29,13 @@ class TcpConnection : Noncopyable,
 {
 public:
 	typedef std::function<void(const TcpConnectionPtr &)> TcpConnectionCallback;
-	TcpConnection(int sockfd);
+	TcpConnection(int sockfd, EpollPoller * loop);
 	~TcpConnection();
 
 	std::string receive();
 	void send(const std::string & msg);
+	void sendAndClose(const std::string & msg);
+	void sendInLoop(const std::string & msg);
 	void shutdown();
 
 	std::string toString();
@@ -50,6 +54,7 @@ private:
 	const InetAddress localAddr_;
 	const InetAddress peerAddr_;
 	bool isShutdownWrite_;
+	EpollPoller * loop_;
 
 	TcpConnectionCallback onConnectionCb_;
 	TcpConnectionCallback onMessageCb_;
